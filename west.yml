@@ -1,13 +1,10 @@
 manifest:
   defaults:
-      remote: zephyr-upstream
+      remote: local-repos
 
   remotes:
     - name: local-repos
-      # CRITICAL: This path assumes the student copies 'lab1_start' 
-      # to a folder that is peer to 'cache'. 
-      # If that's hard to guarantee, use absolute path: 'file:///D:/cache'
-      url-base: file://C:/Developers/RTOS2/cache
+      url-base: file://C:/Developers/F2FZephyr/repos
 
     - name: zephyr-upstream
       url-base: https://github.com/zephyrproject-rtos
