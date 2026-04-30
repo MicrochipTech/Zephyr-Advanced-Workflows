@@ -1,7 +1,7 @@
 @echo off
 
-mkdir C:\Developers\RTOS2\repos
-cd C:\Developers\RTOS2\repos
+mkdir C:\Developers\F2FZephyr\repos
+cd C:\Developers\F2FZephyr\repos
 
 echo ** Installing Podman...
 echo **********************
@@ -14,13 +14,13 @@ echo **********************
 winget install -e --id RedHat.Podman  --silent --accept-package-agreements --accept-source-agreements
 
 echo ** Initializing Podman Machine (4 Cores, 8GB RAM)...
-"C:\Program Files\RedHat\Podman\podman" machine init --cpus 4 --memory 8192
+"C:\Program Files\RedHat\Podman\podman" machine init --cpus 8 --memory 16384
 "C:\Program Files\RedHat\Podman\podman" machine start
 
 echo ** Pulling Zephyr Build Environment...
 echo ****** This may take a while with minimal feedback.  Hang tight!...
 echo **
-"C:\Program Files\RedHat\Podman\podman" pull ghcr.io/zephyrproject-rtos/zephyr-build:v0.28-branch
+"C:\Program Files\RedHat\Podman\podman" pull ghcr.io/zephyrproject-rtos/zephyr-build:v0.29.2
 
 echo ** Pulling git Repositories... 
 echo ****** This may take a while...
@@ -40,15 +40,16 @@ uv python install 3.12
 echo ** Creating Python Virtual Environment...
 cd ..
 uv venv --python 3.12
-.venv\Scripts\activate
+call .venv\Scripts\activate.bat
 uv pip install west pyocd==0.43.0
+pyocd pack install pic32cm
 
 echo *******************
 echo **
 echo ** To Uninstall, please complete the following:
 echo **    podman machine reset --force
 echo **    winget uninstall uv podman
-echo **    rm c:\developers\RTOS2\    (or otherwise delete this folder)
+echo **    rm c:\developers\F2FZephyr\    (or otherwise delete this folder)
 echo **
 echo *******************
 echo ** Setup Complete!
