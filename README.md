@@ -37,13 +37,31 @@ needed for every application, including full driver sets for other vendors and m
 that you know you need for your application.  Though you may not need all of these modules at the moment, take a few minutes to familiarize yourself with all of the modules that are
 downloaded with a default install.  
 
-#### Step 2. Navigate to our pre-configured west.ynml for this class
-Follow the link to the rpository for the [Zephyr Advnaces Workflows](https://github.com/microchiptech/zephyr-advanced-workflows) class, and similarly open the west.yml in this repository.
-Note that the 
+#### Step 2. Navigate to our pre-configured west.yml for this class
+Follow the link to the rpository for the [Zephyr Advanced Workflows](https://github.com/microchiptech/zephyr-advanced-workflows) class, and similarly open the west.yml in this repository.
+Note that several ,`project:` modules have been removed leaving only the bare essemntials for our project.  In `remotes:`, there are two remotes listed, one for the internet connected upstram github repo, and the other points to the pre-cached bare repositopries we store in \Developers\F2FZephyr.  If you stored your repos elsewhere, please edit this location.  The location must be a direct path, as relative paths will not work for this west.yml file.  To switch remotes, either specify the `remote:` paramter for each project module, or use the `defaults:` node to set the remote for anything that isn't manually defined.
+
+Also notice that this west.yml is stored alongside some source code, a CMalkeLists.txt, and a prj.conf.  We'll use this repo as the basis for the work in the rest of this class
 
 
-#### Step 3.  Open a command terminal and naviagate to the workspace create in the pre-work.
+#### Step 3.  Open a command terminal and navigate to the workspace created in the pre-work.
    - `c:\> cd c:\Developers\F2FZephyr`
+
+When in this directory, open VSCode and accept any requests to trust the authors of the code.
+   - `c:\Developers\F2FZephyr\> code .`
+
+With VSCode open, re-open a terminal window and be certain your virtual environment it loaded.  It may happen automatically, or you may need to activate it:
+   - `c:\Developers\F2FZephyr\> .venv\Scripts\activate.bat`
+
+#### Step 4. Initialize a Zephyr workspace and 
+Initialize your zephyr workspace using the slimmed down manifest file (west.yml) in the MicrochipTech/Zephyr-Advanced-Workflows repository.  You'll see that when we initialize with this repo, west will also pull the project source code and automatically add it to our Zephyr Workspace.
+   - `(F2FZephyr) c:\Developers\F2FZephyr\> west init -m http://github.com/MicrochipTech/zephyr-advanced-workflows`
+   - If you need to specify a branch, add it's branch name, tag, or commit hash after the -mr flag
+
+From within your zephyr worksace, run `west update` to pull all of your code together into the workspace.  
+
+Congratulations!  You've explored methods for choosing a specific version of Zephyr and locking your project code to that version (all mathing module versions).  If a new developer joins your team, they can be up
+and running quickly with this project code code and be assured that their zephyr code matches your code!  In the following labs, we'll learn implement the same principles to the Zephyr SDK versions to be certain that compiled code remains consistent across developer computers.
 
 
 ## Lab 2
