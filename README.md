@@ -134,5 +134,157 @@ Automated Testing: You can use this container to run Zephyr's twister test frame
 
 Static Analysis: The container has tools like clang-tidy built-in, allowing you to run deep memory and syntax analysis on your codebase without installing LLVM on your Windows machine.
 
-## Lab 3
-Coming Soon!
+
+## Lab 3 - Extending West with Custom Commands
+In Lab 2, we successfully built and flashed our firmware using a perfectly isolated container environment. However, the resulting command was massive:
+podman run --rm -u root --entrypoint bash -v %cd%:/workdir:z -w /workdir ghcr.io/zephyrproject-rtos/zephyr-build:v0.28-branch -c "pip install jsonschema && west build -b pic32cm_pl10_cnano zephyr-advanced-workflows"
+
+Nobody wants to type that. While you could write a Windows .bat file or a Linux .sh script to wrap it, shell scripts are brittle. They break if you run them from the wrong folder, and they don't easily share across different operating systems.
+
+Because west is written entirely in Python, it includes a powerful extension API. In this lab, we will build a custom West extension inside our application repository. We will abstract our massive container command into a simple west cbuild (Container Build) command, and create a west cflash (Custom Flash) command to handle the split-brain CMake pathing.
+
+### Procedure
+#### Step 1. Link the Manifest to a Command Router
+West is designed with a strict security model. It will not execute random Python scripts you drop into a folder. You must explicitly authorize custom commands by linking them in your top-level west.yml manifest.
+
+Open your application's west.yml file (c:\Developers\F2FZephyr\app\west.yml). Find the `self:` section at the bottom and add the west-commands key:
+
+```
+  self:
+    path: zephyr-advanced-workflows
+    # Add this line to authorize custom commands:
+    west-commands: scripts/custom-commands.yml
+```
+
+#### Step 2. Create the YAML Command Router
+Next, we need to create the custom-commands.yml file we just referenced. This acts as a routing table, mapping the command word the user types to the specific Python file that will execute it.
+
+Create a new folder named `scripts` inside .\app\.
+
+Inside the `scripts` folder, create a file named `custom-commands.yml`.
+
+Add the following YAML configuration:
+
+```
+version: "0.1"
+commands:
+  - name: cbuild
+    class: ContainerBuild
+    help: Run west build inside the classroom Podman container
+    file: cbuild.py
+  - name: cflash
+    class: CustomFlash
+    help: Flash the board bypassing the container paths
+    file: cflash.py
+```
+
+#### Step 3. Write the Python Hooks (`cbuild.py`)
+Now we build the actual Python logic. Every custom West command is a subclass of WestCommand and requires three hooks: an initializer (`__init__`), an argument parser (`do_add_parser`), and the execution logic (`do_run`).
+
+Create a file named `cbuild.py` in your `scripts` folder and paste the following code:
+
+```
+import subprocess
+import sys
+from west.commands import WestCommand
+from west import log
+
+class ContainerBuild(WestCommand):
+    def __init__(self):
+        super().__init__(
+            'cbuild',
+            'run west build inside the classroom container',
+            'Wraps the podman run command to execute west build in an isolated environment.',
+            # This flag allows us to pass unknown arguments (like -b pic32cm...) straight to CMake
+            accepts_unknown_args=True 
+        )
+
+    def do_add_parser(self, parser_adder):
+        # Hooks the command into the standard 'west help' menu
+        parser = parser_adder.add_parser(self.name, help=self.help, description=self.description)
+        return parser
+
+    def do_run(self, args, unknown_args):
+        # 1. Reconstruct the user's intended build command using 'unknown_args'
+        inner_cmd = "pip install jsonschema && west build " + " ".join(unknown_args)
+        log.inf(f"Executing in container: {inner_cmd}")
+
+        # 2. Construct the Podman command using self.topdir (the absolute path to your workspace)
+        # This makes the command completely immune to what subfolder you are currently in!
+        podman_cmd = [
+            "podman", "run", "--rm",
+            "-u", "root",
+            "--entrypoint", "bash",
+            "-v", f"{self.topdir}:/workdir:z",
+            "-w", "/workdir",
+            "ghcr.io/zephyrproject-rtos/zephyr-build:v0.28-branch",
+            "-c", inner_cmd
+        ]
+
+        try:
+            # 3. Execute the command and stream the output to the terminal
+            subprocess.run(podman_cmd, check=True)
+            log.inf("Container build completed successfully.")
+        except subprocess.CalledProcessError as e:
+            log.err(f"Container build failed with exit code {e.returncode}")
+            sys.exit(e.returncode)
+```
+
+#### Step 4. Write the Flash Wrapper (`cflash.py`)
+We also need our `cflash` command to automatically append the `--no-rebuild` flag so that native Windows CMake doesn't panic over the Linux container paths.
+
+Create a file named `cflash.py` in your `scripts` folder.
+
+[!TIP] This is a perfect job to dip your toes into AI assisted coding.  Using Microchip's AI Coding Assistant (or the LLM oif your choice, creste the script.  Here's a prompt that could work:
+"I am working on a Zephyr project using west custom commands to build my application in a docker container using a workspace outside of the container.  I need to write a custom-commands python script called cflash.py that implements all of the necessary west hooks for a custom command and simply runs 'west flash' with the '--no-rebuild' flag afterwards.  please create this script"
+
+Place the output into your `cflash.py` and give it a try!  A working sample is provided below and in the `setup` folder
+
+```
+import subprocess
+import sys
+from west.commands import WestCommand
+from west import log
+
+class CustomFlash(WestCommand):
+    def __init__(self):
+        super().__init__(
+            'cflash',
+            'Flash the board bypassing the container paths',
+            'Wraps the native west flash command with the --no-rebuild flag automatically.',
+            accepts_unknown_args=True
+        )
+
+    def do_add_parser(self, parser_adder):
+        parser = parser_adder.add_parser(self.name, help=self.help, description=self.description)
+        return parser
+
+    def do_run(self, args, unknown_args):
+        # Automatically inject --no-rebuild before appending the user's custom arguments
+        flash_cmd = ["west", "flash", "--no-rebuild"] + unknown_args
+        log.inf(f"Executing native flash: {' '.join(flash_cmd)}")
+
+        try:
+            subprocess.run(flash_cmd, check=True)
+            log.inf("Flash completed successfully.")
+        except subprocess.CalledProcessError as e:
+            log.err(f"Flash failed with exit code {e.returncode}")
+            sys.exit(e.returncode)
+```
+
+#### Step 5. Test the Automation
+Your new commands are now fully integrated into the West ecosystem! Because they are stored in your application repository, anyone who clones your code and runs west update instantly gets access to this custom team tooling.
+
+Let's test it out. In your terminal, run:
+
+  -`(F2FZephyr) c:\Developers\F2FZephyr\> west help`
+
+Scroll to the very bottom of the help menu. Under "Extension Commands," you will now see `cbuild` and `cflash` proudly listed with their help text, automatically self-documented.
+
+Now, compile and flash your code using the seamless workflow:
+
+  -`(F2FZephyr) c:\Developers\F2FZephyr\> west cbuild -b pic32cm_pl10_cnano app`
+
+  -`(F2FZephyr) c:\Developers\F2FZephyr\> west cflash`
+
+Congratulations! You have successfully implemented a professional, enterprise-grade Zephyr workflow. You locked down your exact code dependencies (Lab 1), containerized your compiler to prevent environment rot (Lab 2), and built custom Python automation to make the entire process effortless for your engineering team (Lab 3).
