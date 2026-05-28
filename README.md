@@ -60,6 +60,12 @@ Initialize your zephyr workspace using the slimmed down manifest file (west.yml)
 
 From within your zephyr worksace, run `west update` to pull all of your code together into the workspace.  
 
+
+
+https://github.com/user-attachments/assets/49965edc-7eb2-454e-ab9a-540bb655fe17
+
+
+
 Congratulations!  You've explored methods for choosing a specific version of Zephyr and locking your project code to that version (all mathing module versions).  If a new developer joins your team, they can be up
 and running quickly with this project code code and be assured that their zephyr code matches your code!  In the following labs, we'll learn implement the same principles to the Zephyr SDK versions to be certain that compiled code remains consistent across developer computers.
 
