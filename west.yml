@@ -4,7 +4,7 @@ manifest:
 
   remotes:
     - name: local-repos
-      url-base: file://C:/Developers/F2FZephyr/repos
+      url-base: file://C:/Masters/26018_RTOS2/repos
 
     - name: zephyr-upstream
       url-base: https://github.com/zephyrproject-rtos
